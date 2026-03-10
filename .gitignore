@@ -1,0 +1,22 @@
+# Python Virtual Environment
+venv/
+
+# Local Vector Database (ChromaDB persistence directory)
+chroma_db/
+
+# Local Relational Databases
+*.db
+*.sqlite3
+# Explicitly catching the one in your root just in case:
+university.db
+
+# Log files
+*.log
+agent_audit.log
+
+# Python Cache & Bytecode
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
