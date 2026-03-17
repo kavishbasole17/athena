@@ -40,30 +40,21 @@ def get_llm(model: str = "sqlcoder") -> OllamaLLM:
 
 SQL_PROMPT = PromptTemplate(
     input_variables=["schema", "question"],
-    template="""You are an expert SQLite assistant. Given the database schema below, write a single valid SQL statement that satisfies the user's request.
+    template="""### Task
+Generate a SQL query to answer [QUESTION]{question}[/QUESTION]
 
-### Database Schema:
+### Database Schema
+The query will run on a database with the following schema:
 {schema}
 
-### User Request:
-{question}
-
-### Rules:
-- Output ONLY the raw SQL statement, nothing else.
-- Do NOT include explanations, markdown fences (```), or commentary.
-- Support ALL SQL statement types:
-    * SELECT  — for queries / lookups
-    * INSERT  — to add new rows
-    * UPDATE  — to modify existing rows
-    * DELETE  — to remove rows
-    * CREATE TABLE  — to create a new table (use IF NOT EXISTS)
-    * DROP TABLE    — to delete a table entirely (use IF EXISTS)
-    * ALTER TABLE   — to add/rename/drop columns
+### Rules
+- Support ALL SQL statement types (SELECT, INSERT, UPDATE, DELETE, CREATE TABLE, DROP TABLE, ALTER TABLE).
 - Use standard SQLite syntax.
-- For CREATE TABLE, always define primary keys and sensible column types.
-- For INSERT, supply realistic placeholder values if none are given, unless the user provides them.
 
-SQL:""",
+### Answer
+Given the database schema, here is the SQL query that answers [QUESTION]{question}[/QUESTION]
+```sql
+"""
 )
 
 
@@ -90,13 +81,15 @@ def generate_sql(sql_chain, schema: str, question: str) -> str:
 
 EXPLAINER_PROMPT = PromptTemplate(
     input_variables=["sql"],
-    template="""You are a helpful assistant that explains SQL statements to non-technical users.
+    template="""### Task
+Explain the following SQL query in one simple, plain English sentence.
 
-Given this SQL statement:
+### SQL Query
 {sql}
 
-Write ONE simple, plain English sentence that explains what this statement does, without using any technical jargon.
-Output ONLY that single sentence, nothing else.""",
+### Answer
+Explanation:
+"""
 )
 
 
