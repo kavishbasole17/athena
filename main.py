@@ -72,11 +72,23 @@ DDL_KEYWORDS = re.compile(r"\b(CREATE|DROP|ALTER)\b", re.IGNORECASE)
 # ─── UI Helpers ───────────────────────────────────────────────────────────────
 
 BANNER = r"""
+    ___  ________  _________   _____ 
+ $$$$$$\ $$$$$$$$\ $$\   $$\ $$$$$$$$\ $$\   $$\  $$$$$$\  
+$$  __$$\\__$$  __|$$ |  $$ |$$  _____|$$$\  $$ |$$  __$$\ 
+$$ /  $$ |  $$ |   $$ |  $$ |$$ |      $$$$\ $$ |$$ /  $$ |
+$$$$$$$$ |  $$ |   $$$$$$$$ |$$$$$\    $$ $$\$$ |$$$$$$$$ |
+$$  __$$ |  $$ |   $$  __$$ |$$  __|   $$ \$$$$ |$$  __$$ |
+$$ |  $$ |  $$ |   $$ |  $$ |$$ |      $$ |\$$$ |$$ |  $$ |
+$$ |  $$ |  $$ |   $$ |  $$ |$$$$$$$$\ $$ | \$$ |$$ |  $$ |
+\__|  \__|  \__|   \__|  \__|\________|\__|  \__|\__|  \__|
+                                                           
+                                                           
+                                                           
 ╔══════════════════════════════════════════════════════════╗
-║       RAG Text-to-SQL Agent  |  HITL Guardrail Active   ║
-║       Model: sqlcoder (Ollama)   DB: university.db      ║
-║       Supports: SELECT · INSERT · UPDATE · DELETE       ║
-║                 CREATE · DROP · ALTER                   ║
+║       RAG Text-to-SQL Agent  |  HITL Guardrail Active    ║
+║       Model: sqlcoder (Ollama)   DB: university.db       ║
+║       Supports: SELECT · INSERT · UPDATE · DELETE        ║
+║                 CREATE · DROP · ALTER                    ║
 ╚══════════════════════════════════════════════════════════╝
 """
 
