@@ -70,9 +70,13 @@ def generate_sql(sql_chain, schema: str, question: str) -> tuple[str, float]:
     start_time = time.perf_counter()
     try:
         raw_output = sql_chain.invoke({"schema": schema, "question": question})
-        # Strip markdown fences if the model wraps output despite instructions
+        # Strip markdown fences and leaked tokens
         sql = re.sub(r"```(?:sql)?", "", raw_output, flags=re.IGNORECASE).strip()
-        sql = sql.strip("`").strip()
+        sql = sql.replace("<s>", "").replace("</s>", "")
+        sql = sql.replace("/******/ QUESTION ]", "")
+        # Handle common SQLite hallucinations (like ILIKE) dynamically using regex
+        sql = re.sub(r"(?i)\bilike\b", "LIKE", sql)
+        sql = sql.strip("` \n").strip()
         elapsed_time = time.perf_counter() - start_time
         logger.info("SQL generated: %s", sql)
         return sql, elapsed_time
@@ -112,7 +116,10 @@ def generate_sql_alternate(alt_sql_chain, schema: str, question: str) -> tuple[s
         sql = raw_output.strip()
         # Even stricter fallback cleanup for Alternate Algorithm
         sql = re.sub(r"```(?:sql)?", "", sql, flags=re.IGNORECASE).strip()
-        sql = sql.strip("`").strip()
+        sql = sql.replace("<s>", "").replace("</s>", "")
+        # Handle common SQLite hallucinations
+        sql = re.sub(r"(?i)\bilike\b", "LIKE", sql)
+        sql = sql.strip("` \n").strip()
         elapsed_time = time.perf_counter() - start_time
         logger.info("Alternate SQL generated: %s", sql)
         return sql, elapsed_time

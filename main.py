@@ -72,16 +72,18 @@ DDL_KEYWORDS = re.compile(r"\b(CREATE|DROP|ALTER)\b", re.IGNORECASE)
 # ─── UI Helpers ───────────────────────────────────────────────────────────────
 
 BANNER = r"""
-    ___  ________  _________   _____ 
- $$$$$$\ $$$$$$$$\ $$\   $$\ $$$$$$$$\ $$\   $$\  $$$$$$\  
-$$  __$$\\__$$  __|$$ |  $$ |$$  _____|$$$\  $$ |$$  __$$\ 
-$$ /  $$ |  $$ |   $$ |  $$ |$$ |      $$$$\ $$ |$$ /  $$ |
-$$$$$$$$ |  $$ |   $$$$$$$$ |$$$$$\    $$ $$\$$ |$$$$$$$$ |
-$$  __$$ |  $$ |   $$  __$$ |$$  __|   $$ \$$$$ |$$  __$$ |
-$$ |  $$ |  $$ |   $$ |  $$ |$$ |      $$ |\$$$ |$$ |  $$ |
-$$ |  $$ |  $$ |   $$ |  $$ |$$$$$$$$\ $$ | \$$ |$$ |  $$ |
-\__|  \__|  \__|   \__|  \__|\________|\__|  \__|\__|  \__|
-                                                           
+
+--     $$$$$$\ $$$$$$$$\ $$\   $$\ $$$$$$$$\ $$\   $$\  $$$$$$\  
+--    $$  __$$\\__$$  __|$$ |  $$ |$$  _____|$$$\  $$ |$$  __$$\ 
+--    $$ /  $$ |  $$ |   $$ |  $$ |$$ |      $$$$\ $$ |$$ /  $$ |
+--    $$$$$$$$ |  $$ |   $$$$$$$$ |$$$$$\    $$ $$\$$ |$$$$$$$$ |
+--    $$  __$$ |  $$ |   $$  __$$ |$$  __|   $$ \$$$$ |$$  __$$ |
+--    $$ |  $$ |  $$ |   $$ |  $$ |$$ |      $$ |\$$$ |$$ |  $$ |
+--    $$ |  $$ |  $$ |   $$ |  $$ |$$$$$$$$\ $$ | \$$ |$$ |  $$ |
+--    \__|  \__|  \__|   \__|  \__|\________|\__|  \__|\__|  \__|
+--                                                               
+--                                                               
+--                                                               
                                                            
                                                            
 ╔══════════════════════════════════════════════════════════╗
@@ -225,10 +227,12 @@ def main() -> None:
         elif is_reliable2 and not is_reliable1:
             sql = sql2
             print(f"\n  [*] Proceeding with Algorithm 2 output.")
-        else:
-            # If both are reliable, or both are unreliable, default to Algo 1.
+        elif is_reliable1 and is_reliable2:
             sql = sql1
             print(f"\n  [*] Proceeding with Algorithm 1 output as default.")
+        else:
+            print(f"\n  [!] Both algorithms failed to generate verifiable SQL. Skipping execution.")
+            continue
 
         # Step 3 — Explain SQL
         try:
@@ -242,29 +246,29 @@ def main() -> None:
         print_box("⚡ Generated SQL", sql)
         print_box("💬 What this does", explanation)
 
-        # ── HITL GUARDRAIL ────────────────────────────────────────────────────
-        # Always confirm for any state-changing operation; reads go straight through
-        is_write = bool(WRITE_KEYWORDS.search(sql))
+        # ─── HITL GUARDRAIL ────────────────────────────────────────────────────
+        # Force confirm for ANY operation as requested by the user
+        print(r"""
+  ██╗  ██╗██╗████████╗██╗     
+  ██║  ██║██║╚══██╔══╝██║     
+  ███████║██║   ██║   ██║     
+  ██╔══██║██║   ██║   ██║     
+  ██║  ██║██║   ██║   ███████╗
+  ╚═╝  ╚═╝╚═╝   ╚═╝   ╚══════╝""")
+        print("  ┌──────────────────────────────────────────────────┐")
+        print("  │  ⚠  HUMAN-IN-THE-LOOP CONFIRMATION REQUIRED      │")
+        print("  └──────────────────────────────────────────────────┘")
 
-        if is_write:
-            print()
-            print("  ┌──────────────────────────────────────────────────┐")
-            print("  │  ⚠  HUMAN-IN-THE-LOOP CONFIRMATION REQUIRED      │")
-            print("  └──────────────────────────────────────────────────┘")
+        while True:
+            try:
+                confirm = input("  Execute this SQL against the database? [Y/N]: ").strip().upper()
+            except (KeyboardInterrupt, EOFError):
+                confirm = "N"
+                print()
 
-            while True:
-                try:
-                    confirm = input("  Execute this SQL against the database? [Y/N]: ").strip().upper()
-                except (KeyboardInterrupt, EOFError):
-                    confirm = "N"
-                    print()
-
-                if confirm in {"Y", "N"}:
-                    break
-                print("  [!] Please type Y to execute or N to cancel.")
-        else:
-            # SELECT queries — auto-proceed (no mutation risk)
-            confirm = "Y"
+            if confirm in {"Y", "N"}:
+                break
+            print("  [!] Please type Y to execute or N to cancel.")
 
         if confirm == "Y":
             logger.info("HITL APPROVED — executing SQL: %s", sql)
