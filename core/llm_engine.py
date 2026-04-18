@@ -9,6 +9,8 @@ Handles:
 
 import logging
 import re
+import time
+import sqlite3
 
 from langchain_ollama import OllamaLLM
 from langchain_core.prompts import PromptTemplate
@@ -63,18 +65,83 @@ def build_sql_chain(llm: OllamaLLM):
     return SQL_PROMPT | llm | StrOutputParser()
 
 
-def generate_sql(sql_chain, schema: str, question: str) -> str:
-    """Run the SQL chain and return a cleaned SQL string."""
+def generate_sql(sql_chain, schema: str, question: str) -> tuple[str, float]:
+    """Run the SQL chain and return a cleaned SQL string and execution time."""
+    start_time = time.perf_counter()
     try:
         raw_output = sql_chain.invoke({"schema": schema, "question": question})
         # Strip markdown fences if the model wraps output despite instructions
         sql = re.sub(r"```(?:sql)?", "", raw_output, flags=re.IGNORECASE).strip()
         sql = sql.strip("`").strip()
+        elapsed_time = time.perf_counter() - start_time
         logger.info("SQL generated: %s", sql)
-        return sql
+        return sql, elapsed_time
     except Exception as e:
         logger.error("SQL generation failed: %s", e)
         raise
+
+# ─── Alternate SQL Generation Chain ───────────────────────────────────────────
+
+ALT_SQL_PROMPT = PromptTemplate(
+    input_variables=["schema", "question"],
+    template="""### Task
+Generate a SQL query to answer [QUESTION]{question}[/QUESTION]
+
+### Database Schema
+The query will run on a database with the following schema:
+{schema}
+
+### Rules
+- Support ALL SQL statement types.
+- Use standard SQLite syntax strictly.
+
+### Answer
+Given the database schema, here is the plain SQL query (without markdown wrappers or explanations) that answers [QUESTION]{question}[/QUESTION]:
+"""
+)
+
+def build_alt_sql_chain(llm: OllamaLLM):
+    """Return an alternative LCEL chain for SQL generation."""
+    return ALT_SQL_PROMPT | llm | StrOutputParser()
+
+def generate_sql_alternate(alt_sql_chain, schema: str, question: str) -> tuple[str, float]:
+    """Run the alternate SQL chain and return the SQL with elapsed time."""
+    start_time = time.perf_counter()
+    try:
+        raw_output = alt_sql_chain.invoke({"schema": schema, "question": question})
+        sql = raw_output.strip()
+        # Even stricter fallback cleanup for Alternate Algorithm
+        sql = re.sub(r"```(?:sql)?", "", sql, flags=re.IGNORECASE).strip()
+        sql = sql.strip("`").strip()
+        elapsed_time = time.perf_counter() - start_time
+        logger.info("Alternate SQL generated: %s", sql)
+        return sql, elapsed_time
+    except Exception as e:
+        logger.error("Alternate SQL generation failed: %s", e)
+        raise
+
+# ─── Reliability Metric ───────────────────────────────────────────────────────
+
+def validate_sql_syntax(sql: str) -> bool:
+    """Check if the SQL syntax is valid against SQLite (dry run)."""
+    sql_stripped = sql.strip()
+    if not sql_stripped:
+        logger.warning("SQL Validation Failed: empty SQL string")
+        return False
+    try:
+        from core.db_manager import DB_PATH
+        conn = sqlite3.connect(DB_PATH)
+        sql_upper = sql_stripped.upper()
+        if any(sql_upper.startswith(kw) for kw in ("CREATE", "DROP", "ALTER")):
+             # DDL EXPLAIN
+             conn.execute(f"EXPLAIN {sql_stripped}")
+        else:
+             conn.execute(f"EXPLAIN {sql_stripped}")
+        conn.close()
+        return True
+    except sqlite3.Error as e:
+        logger.warning("SQL Validation Failed: %s", e)
+        return False
 
 
 # ─── Explainer Chain ──────────────────────────────────────────────────────────

@@ -58,6 +58,9 @@ from core.llm_engine import (
     explain_sql,
     WRITE_KEYWORDS,
     DESTRUCTIVE_KEYWORDS,
+    build_alt_sql_chain,
+    generate_sql_alternate,
+    validate_sql_syntax,
 )
 
 import re
@@ -142,6 +145,7 @@ def main() -> None:
     try:
         llm = get_llm(model="sqlcoder")
         sql_chain = build_sql_chain(llm)
+        alt_sql_chain = build_alt_sql_chain(llm)
         explainer_chain = build_explainer_chain(llm)
         print("  [✓] LLM chains ready.\n")
     except Exception as e:
@@ -179,14 +183,40 @@ def main() -> None:
             logger.error("Schema retrieval error: %s", e)
             continue
 
-        # Step 2 — Generate SQL
+        # Step 2 — Generate SQL using both algorithms
         try:
-            print("  [*] Generating SQL via LLM (this may take a moment)...")
-            sql = generate_sql(sql_chain, schema, question)
+            print("  [*] Generating SQL via Algorithm 1 (Current)...")
+            sql1, time1 = generate_sql(sql_chain, schema, question)
+            is_reliable1 = validate_sql_syntax(sql1)
         except Exception as e:
-            print(f"\n  [✗] SQL generation error: {e}")
+            print(f"\n  [✗] Algorithm 1 SQL generation error: {e}")
             logger.error("SQL generation error: %s", e)
             continue
+            
+        try:
+            print("  [*] Generating SQL via Algorithm 2 (Alternate)...")
+            sql2, time2 = generate_sql_alternate(alt_sql_chain, schema, question)
+            is_reliable2 = validate_sql_syntax(sql2)
+        except Exception as e:
+            print(f"\n  [✗] Algorithm 2 SQL generation error: {e}")
+            logger.error("Alt SQL generation error: %s", e)
+            continue
+
+        print("\n  [Metrics Comparison]")
+        print(f"  Algorithm 1: {time1:.2f}s | Reliable SQL: {'Yes' if is_reliable1 else 'No'} | SQL: {sql1}")
+        print(f"  Algorithm 2: {time2:.2f}s | Reliable SQL: {'Yes' if is_reliable2 else 'No'} | SQL: {sql2}")
+
+        # Choose the best SQL to proceed
+        if is_reliable1 and not is_reliable2:
+            sql = sql1
+            print(f"\n  [*] Proceeding with Algorithm 1 output.")
+        elif is_reliable2 and not is_reliable1:
+            sql = sql2
+            print(f"\n  [*] Proceeding with Algorithm 2 output.")
+        else:
+            # If both are reliable, or both are unreliable, default to Algo 1.
+            sql = sql1
+            print(f"\n  [*] Proceeding with Algorithm 1 output as default.")
 
         # Step 3 — Explain SQL
         try:
